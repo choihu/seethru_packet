@@ -146,8 +146,31 @@ def main():
 
     with open(output_filename, 'w') as f:
         f.write(script_content)
-    
+
     os.chmod(output_filename, 0o755)
+
+    delete_script_path = service_dir / "delete_iptables.sh"
+    delete_script = f"""#!/bin/bash
+set -euo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+  sudo_cmd={{${{SUDO:-sudo}}}}
+else
+  sudo_cmd=""
+fi
+
+if [[ -n "$sudo_cmd" ]]; then
+  "$sudo_cmd" iptables -t nat -D MITM -p tcp ! -s 127.0.0.0/24 --dport {listening_port} -j REDIRECT --to-ports {proxy_port}
+else
+  iptables -t nat -D MITM -p tcp ! -s 127.0.0.0/24 --dport {listening_port} -j REDIRECT --to-ports {proxy_port}
+fi
+
+echo "[INFO] Removed MITM redirect for target port {listening_port} -> proxy port {proxy_port}."
+"""
+
+    with open(delete_script_path, 'w') as f:
+        f.write(delete_script)
+    delete_script_path.chmod(0o755)
 
     print("\n----------------------------------------")
     print(f"[SUCCESS] Generated proxy script: {output_filename}")
