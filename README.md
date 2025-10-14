@@ -51,7 +51,7 @@ Enter path to .pem file (relative to MITM_PROXY dir) [default: /cs/services/http
 To use it:
   1. In Seethru_Packet dir and run: ./https_test/run_https_test_https_post_proxy.sh
   2. Check iptables rules: sudo iptables -t nat -L --line-numbers -n -v
-  3. If MITM chain doesn't exist: sudo ./set_iptables_rules.sh
+  3. If MITM chain doesn`t exist: sudo ./set_iptables_rules.sh
   4. Add iptables rules: sudo iptables -t nat -A MITM -p tcp --dport 9443 -j REDIRECT --to-ports 19443
 
 ~/seethru_packet$ cd https_test/
