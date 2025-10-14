@@ -67,11 +67,11 @@ def log_tcp_flow(flow: tcp.TCPFlow):
 
     try:
         with open(f"{LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", "a") as log_file:
+            log_file.write("-" * 20 + "\n")
             log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
-            log_file.write(f"--- TCP Message ---\n")
             log_file.write(f"Flow: {c_host}:{c_port} <-> {s_host}:{s_port}\n")
             log_file.write(f"Direction: {direction}\n")
-            log_file.write(f"Data (raw):\n{decrypt(message.content)}\n")
+            log_file.write(f"Data (raw):\n{decrypt(bytes_to_str(message.content))}\n\n")
 
     except Exception as e:
         print(f"Failed to log TCP message: {e}")
@@ -90,13 +90,12 @@ def log_leak_tcp_flow(flow: tcp.TCPFlow):
         with open(f"{LEAK_LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", "a") as log_file:
             for message in flow.messages:
                 direction = "CLIENT -> SERVER" if message.from_client else "SERVER -> CLIENT"
-
+                log_file.write("-" * 20 + "\n")
                 log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
-                log_file.write(f"--- TCP Message ---\n")
                 log_file.write(f"Flow: {c_host}:{c_port} <-> {s_host}:{s_port}\n")
                 log_file.write(f"Direction: {direction}\n")
-                log_file.write(f"Data (raw):\n{decrypt(message.content)}\n")
                 log_file.write(f"Data (hex):\n{message.content.hex()}\n")
+                log_file.write(f"Data (raw):\n{decrypt(bytes_to_str(message.content))}\n\n")
 
             log_file.write(f"=================================\n")
             log_file.write(f"=================================\n\n")
@@ -121,10 +120,20 @@ def tcp_message(flow: tcp.TCPFlow):
 
     if ENABLE_MODIFY:
         if LEAKED:
-            for m in flow.messages:
-                if m.from_client and search_in_str(decrypt(bytes_to_str(m.content)), BLOCKED_STRINGS):
-                        for f in FLAG:
-                            flow.messages[-1].content = str_to_bytes(encrypt(message.replace(f, MODIFIED)))
+            for msg in flow.messages:
+                if not msg.from_client:
+                    continue
+
+                try:
+                    plain_prev_msg = decrypt(bytes_to_str(msg.content))
+                except:
+                    continue
+
+                if search_in_str(plain_prev_msg, BLOCKED_STRINGS):
+                    for f in FLAG:
+                        message = message.replace(f, MODIFIED)
+                    flow.messages[-1].content = str_to_bytes(encrypt(message))
+                    break
     else:
         if search_in_str(message, BLOCKED_STRINGS):
             flow.messages[-1].content = b"no hack"

@@ -156,10 +156,10 @@ def log_websocket_flow(flow: http.HTTPFlow) -> None:
             message = flow.websocket.messages[-1]
             direction = "Client -> Server" if message.from_client else "Server -> Client"
 
-            log_file.write(f"WebSocket Message ({direction}):\n")
-            decoded_content = decrypt(bytes_to_str(message.content))
-            log_file.write(f"  Decoded Text: {decoded_content}\n")
             log_file.write("-" * 20 + "\n")
+            log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
+            log_file.write(f"Direction: {direction}\n")
+            log_file.write(f"Data (raw):\n{decrypt(bytes_to_str(message.content))}\n")
 
     except Exception as e:
         print(f"!!! Exception in websocket_message: {e} !!!")
@@ -167,15 +167,14 @@ def log_websocket_flow(flow: http.HTTPFlow) -> None:
 def log_leak_websocket_flow(flow: http.HTTPFlow):
     try:
         with open(f"{LEAK_LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", "a") as log_file:
-            for message in flow.messages:
+            for message in flow.websocket.messages:
                 direction = "CLIENT -> SERVER" if message.from_client else "SERVER -> CLIENT"
 
+                log_file.write("-" * 20 + "\n")
                 log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
-                log_file.write(f"--- TCP Message ---\n")
-                log_file.write(f"Flow: {flow.client_conn.peername[0]}:{flow.client_conn.peername[1]} <-> {flow.server_conn.address[0]}:{flow.server_conn.address[1]}\n")
                 log_file.write(f"Direction: {direction}\n")
-                log_file.write(f"Data (raw):\n{decrypt(message.content)}\n")
                 log_file.write(f"Data (hex):\n{message.content.hex()}\n")
+                log_file.write(f"Data (raw):\n{decrypt(bytes_to_str(message.content))}\n")
 
             log_file.write(f"=================================\n")
             log_file.write(f"=================================\n\n")
@@ -193,12 +192,12 @@ def websocket_start(flow: http.HTTPFlow) -> None:
     except Exception as e:
         print(f"Failed to log WebSocket start: {e}")
 
-def websocket_message(flow: http.HTTPFlow) -> None:
+def websocket_message(flow: http.HTTPFlow):
     """
     Called when a WebSocket message is sent or received.
     """
     log_websocket_flow(flow)
-    
+
     if len(flow.websocket.messages) == 0:
         return
     LEAKED = False
@@ -206,15 +205,25 @@ def websocket_message(flow: http.HTTPFlow) -> None:
 
     refresh_flags(5, 2)
     if search_in_str(message, FLAG):
-        LEAKED = True
         log_leak_websocket_flow(flow)
+        LEAKED = True
 
     if ENABLE_MODIFY:
         if LEAKED:
-            for m in flow.websocket.messages:
-                if m.from_client and search_in_str(decrypt(bytes_to_str(m.content)), BLOCKED_STRINGS):
+            for msg in flow.websocket.messages:
+                if not msg.from_client:
+                    continue
+
+                try:
+                    plain_prev_msg = decrypt(bytes_to_str(msg.content))
+                except:
+                    continue
+
+                if search_in_str(plain_prev_msg, BLOCKED_STRINGS):
                     for f in FLAG:
-                        flow.websocket.messages[-1].content = str_to_bytes(encrypt(message.replace(f, MODIFIED)))
+                        message = message.replace(f, MODIFIED)
+                    flow.websocket.messages[-1].content = str_to_bytes(encrypt(message))
+                    break
     else:
         if search_in_str(message, BLOCKED_STRINGS):
             flow.websocket.messages[-1].content = b"no hack"

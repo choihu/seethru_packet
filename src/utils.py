@@ -58,11 +58,12 @@ def deserialized(raw: str) -> Any:
 def serialized(raw: str) -> Any:
     return binascii.hexlify(pickle.dumps(raw, fix_imports=False)).decode()
 
-def search_in_str(string: str, search_list: list) -> bool:
+def search_in_str(string: any, search_list: list) -> bool:
     """
     string: origin str message, search_list: list of strings to find 
     If founded, return True. Else return False
     """
+    string = bytes_to_str(string)
     if not string or not search_list:
         return False
     if any(s in string for s in search_list):

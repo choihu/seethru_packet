@@ -171,5 +171,7 @@ echo "Add iptables rules: sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24
 
 if [ "$PROXY_TYPE" == "https" ]; then
   echo "Set .pem file: cat cert.key cert.crt > cert.pem"
+fi
 if [ "$PROXY_TYPE" == "tls" ]; then
   echo "Set .pem file: cat cert.crt cert.key > cert.pem"
+fi
