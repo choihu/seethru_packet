@@ -19,8 +19,7 @@ LEAK_LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LEAK_LOG_FILE", "l
 
 service_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = Path(__file__).parent.parent.resolve()
-FLAG_DIR = BASE_DIR / “flags” / service_nam
-e
+FLAG_DIR = BASE_DIR / "flags" / service_name
 FLAG = []
 _last_load = 0
 
