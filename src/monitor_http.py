@@ -16,10 +16,6 @@ LEAK_LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LEAK_LOG_FILE", "l
 
 service_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = Path(__file__).parent.parent.resolve()
-FLAG_DIR = BASE_DIR / "flags" /  service_name
-
-service_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-BASE_DIR = Path(__file__).parent.parent.resolve()
 FLAG_DIR = BASE_DIR / "flags" / service_name
 FLAG = []
 _last_load = 0
@@ -163,7 +159,7 @@ def log_websocket_flow(flow: http.HTTPFlow) -> None:
             log_file.write("-" * 20 + "\n")
             log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
             log_file.write(f"Direction: {direction}\n")
-            log_file.write(f"Data (raw):\n{decrypt(bytes_to_str(message.content))}\n")
+            log_file.write(f"Data (raw):\n{decrypt(message.content)}\n")
 
     except Exception as e:
         print(f"!!! Exception in websocket_message: {e} !!!")
@@ -178,7 +174,7 @@ def log_leak_websocket_flow(flow: http.HTTPFlow):
                 log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
                 log_file.write(f"Direction: {direction}\n")
                 log_file.write(f"Data (hex):\n{message.content.hex()}\n")
-                log_file.write(f"Data (raw):\n{decrypt(bytes_to_str(message.content))}\n")
+                log_file.write(f"Data (raw):\n{decrypt(message.content)}\n")
 
             log_file.write(f"=================================\n")
             log_file.write(f"=================================\n\n")
@@ -205,7 +201,7 @@ def websocket_message(flow: http.HTTPFlow):
     if len(flow.websocket.messages) == 0:
         return
     LEAKED = False
-    message = decrypt(bytes_to_str(flow.websocket.messages[-1].content))
+    message = decrypt(flow.websocket.messages[-1].content)
 
     refresh_flags(5, 2)
     if search_in_str(message, FLAG):
@@ -219,7 +215,7 @@ def websocket_message(flow: http.HTTPFlow):
                     continue
 
                 try:
-                    plain_prev_msg = decrypt(bytes_to_str(msg.content))
+                    plain_prev_msg = decrypt(msg.content)
                 except:
                     continue
 

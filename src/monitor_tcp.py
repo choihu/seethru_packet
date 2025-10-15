@@ -16,10 +16,6 @@ LEAK_LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LEAK_LOG_FILE", "l
 
 service_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = Path(__file__).parent.parent.resolve()
-FLAG_DIR = BASE_DIR / "flags" /  service_name
-
-service_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-BASE_DIR = Path(__file__).parent.parent.resolve()
 FLAG_DIR = BASE_DIR / "flags" / service_name
 FLAG = []
 _last_load = 0
@@ -75,7 +71,7 @@ def log_tcp_flow(flow: tcp.TCPFlow):
             log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
             log_file.write(f"Flow: {c_host}:{c_port} <-> {s_host}:{s_port}\n")
             log_file.write(f"Direction: {direction}\n")
-            log_file.write(f"Data (raw):\n{decrypt(bytes_to_str(message.content))}\n\n")
+            log_file.write(f"Data (raw):\n{decrypt(message.content)}\n\n")
 
     except Exception as e:
         print(f"Failed to log TCP message: {e}")
@@ -99,7 +95,7 @@ def log_leak_tcp_flow(flow: tcp.TCPFlow):
                 log_file.write(f"Flow: {c_host}:{c_port} <-> {s_host}:{s_port}\n")
                 log_file.write(f"Direction: {direction}\n")
                 log_file.write(f"Data (hex):\n{message.content.hex()}\n")
-                log_file.write(f"Data (raw):\n{decrypt(bytes_to_str(message.content))}\n\n")
+                log_file.write(f"Data (raw):\n{decrypt(message.content)}\n\n")
 
             log_file.write(f"=================================\n")
             log_file.write(f"=================================\n\n")
@@ -114,7 +110,7 @@ def tcp_message(flow: tcp.TCPFlow):
     if len(flow.messages) == 0:
         return
 
-    message = decrypt(bytes_to_str(flow.messages[-1].content))
+    message = decrypt(flow.messages[-1].content)
     LEAKED = False
 
     refresh_flags(5, 2)
@@ -129,7 +125,7 @@ def tcp_message(flow: tcp.TCPFlow):
                     continue
 
                 try:
-                    plain_prev_msg = decrypt(bytes_to_str(msg.content))
+                    plain_prev_msg = decrypt(msg.content)
                 except:
                     continue
 

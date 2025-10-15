@@ -4,13 +4,19 @@ import pickle
 import json
 from typing import Any
 
+ENCRYPTED = True
+
 def decrypt(raw: any) -> any:
-    plain = bytes_to_str(raw)
-    return bytes_to_str(plain)
+    if not ENCRYPTED:
+        return raw
+    plain = raw
+    return plain
 
 def encrypt(raw: any) -> any:
-    cypher = bytes_to_str(raw)
-    return bytes_to_str(cypher)
+    if not ENCRYPTED:
+        return raw
+    cypher = raw
+    return cypher
 
 def deserialized(raw: str) -> Any:
     """Simplified decoder: hex -> bytes -> pickle | JSON | text.
