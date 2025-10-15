@@ -129,11 +129,8 @@ def main():
         shutil.copy(wrapper_src, wrapper_dst)
         wrapper_dst.chmod(0o755)
     log_dir = service_dir / "logs"
-    flag_dir = service_dir / "flags"
     if not log_dir.is_dir():
         log_dir.mkdir(parents=True, exist_ok=True)
-    if not flag_dir.is_dir():
-        flag_dir.mkdir(parents=True, exist_ok=True)
     log_dir.chmod(0o777)
 
     # Replace placeholders - a bit simplistic but works for this template

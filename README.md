@@ -16,6 +16,8 @@ Seethrough Packet은 mitmproxy 기반으로 http, https, tcp 통신 패킷들을
 
 - HTTPS 서비스는 PROXY_TYPE을 https로 설정하고 서비스에서 사용하는 서버 인증서(*.crt*)와 개인키(*.key*)를 합쳐 하나의 *.pem* 번들을 만들어 CUSTOM_CERT_PATH로 지정해야 합니다.
 
+- CUSTOM_CERT_PATH는 *seethrue_packet/{env_name}* 경로부터 상대 경로로 지정합니다.
+
 
 ### Usage Example
 
@@ -101,8 +103,6 @@ Add iptables rules: sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dpo
 
 ```bash
 └── {env_name}
-    ├── flags
-    │   └── 1
     ├── logs
     │   ├── leak_https_https_post_9443_0027.txt
     │   └── log_https_https_post_9443_0024.txt
