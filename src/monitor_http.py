@@ -14,9 +14,13 @@ MODIFIED = "SUCCESS"
 LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LOG_FILE", "log_http"))
 LEAK_LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LEAK_LOG_FILE", "leak_http"))
 
-BASE_DIR = Path(__file__).parent.resolve()
-FLAG_DIR = BASE_DIR / "flags"
+#BASE_DIR = Path(__file__).parent.resolve()
+#FLAG_DIR = BASE_DIR / "flags"
 
+service_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(__file__).parent.parent.resolve()
+FLAG_DIR = BASE_DIR / “flags” / service_nam
+e
 FLAG = []
 _last_load = 0
 
