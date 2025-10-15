@@ -16,7 +16,6 @@ def cli(context: click.Context, name: str) -> None:
     # Store arguments to click's context
     context.obj["name"] = name
 
-
 @cli.command("start")
 @click.pass_context
 def start_get_flag(context: click.Context) -> None:

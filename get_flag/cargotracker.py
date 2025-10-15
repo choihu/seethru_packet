@@ -10,9 +10,7 @@ def get_latest_flag():
         data = f.read()
 
     flag = data.split("VALUES (3020, '")[1].split("'")[0]
-    print(data)
     return flag
-
 
 def main():
     while True:
@@ -28,8 +26,8 @@ def main():
 
 
 if __name__ == "__main__":
-    TARGET_FILE = "/cs/data/aisplus/fleets/fleet0/Flying Dutchman"
-    FLAG_DIR = pathlib.Path(__file__).parent.parent.resolve() / PROB_NAME / "flags"
+    TARGET_FILE = "/cs/data/cargotracker/database.sql"
+    FLAG_DIR = pathlib.Path(__file__).parent.parent.resolve() / "flags" / PROB_NAME
     print(FLAG_DIR)
     if not FLAG_DIR.is_dir():
         FLAG_DIR.mkdir(parents=True, exist_ok=True)

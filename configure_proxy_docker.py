@@ -134,6 +134,7 @@ def main():
         log_dir.mkdir(parents=True, exist_ok=True)
     if not flag_dir.is_dir():
         flag_dir.mkdir(parents=True, exist_ok=True)
+    log_dir.chmod(0o777)
 
     # Replace placeholders - a bit simplistic but works for this template
     script_content = template.replace('LISTENING_PORT=9999', f'LISTENING_PORT={proxy_port}')
