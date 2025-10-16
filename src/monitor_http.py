@@ -14,9 +14,7 @@ MODIFIED = "SUCCESS"
 LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LOG_FILE", "log_http"))
 LEAK_LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LEAK_LOG_FILE", "leak_http"))
 
-service_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-BASE_DIR = Path(__file__).parent.parent.resolve()
-FLAG_DIR = BASE_DIR / "flags" / service_name
+FLAG_DIR = Path("/flags")
 FLAG = []
 _last_load = 0
 
@@ -26,12 +24,9 @@ def refresh_flags(max_age: int = 5, num_latest_rounds: int = 2):
     if now - _last_load < max_age:
         return
     
-    # Ensure flags directory exists and handle absence gracefully
-    try:
-        os.makedirs(FLAG_DIR, exist_ok=True)
-    except Exception:
-        pass
-
+    if not FLAG_DIR.is_dir():
+        return
+    
     latest_flags = list()
     try:
         latest_flag_files = sorted(os.listdir(FLAG_DIR))[-num_latest_rounds:]

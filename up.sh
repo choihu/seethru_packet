@@ -41,7 +41,7 @@ files_to_copy=(
   "scripts"
   "src"
   "get-flag.py"
-  "get_flag
+  "get_flag"
 )
 
 for file in "${files_to_copy[@]}"; do

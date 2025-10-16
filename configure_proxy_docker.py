@@ -141,6 +141,7 @@ def main():
     )
     script_content = script_content.replace('NETWORK_NAME="my_wargame_default"', f'NETWORK_NAME="{network_name}"')
     script_content = script_content.replace('CUSTOM_CERT_PATH=""', f'CUSTOM_CERT_PATH="{custom_cert}"')
+    script_content = script_content.replace('ENV_NAME="my_docker_environment"', f'ENV_NAME="{env_name}"')
 
     with open(output_filename, 'w') as f:
         f.write(script_content)

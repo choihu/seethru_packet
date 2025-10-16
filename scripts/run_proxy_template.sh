@@ -28,7 +28,14 @@ NETWORK_NAME="my_wargame_default"
 #    The path should be relative to the MITM_PROXY directory.
 CUSTOM_CERT_PATH=""
 
+ENV_NAME="my_docker_environment"
+
 BASE_DIR="$( cd "$( dirname "$0" )" && pwd -P )"
+PROJECT_ROOT=$(dirname "$BASE_DIR")
+
+CONTAINER_NAME="mitmproxy_${TARGET_SERVICE}_${TARGET_PORT}"
+
+FLAG_DIR="$PROJECT_ROOT/flags/$ENV_NAME"
 # ===================================================================
 # ===                  END OF CONFIGURATION                       ===
 # ===================================================================
@@ -92,13 +99,11 @@ else
 fi
 
 # Create unique container name
-CONTAINER_NAME="mitmproxy_${TARGET_SERVICE}_${TARGET_PORT}"
-
 
 # --- Build docker and mitmproxy commands ---
 
 # Base docker command
-DOCKER_ARGS="-d --name $CONTAINER_NAME --net=host -v $BASE_DIR:/scripts/ -e LOG_FILE=$LOG_FILE -e LEAK_LOG_FILE=$LEAK_LOG_FILE"
+DOCKER_ARGS="-d --name $CONTAINER_NAME --net=host -v $BASE_DIR:/scripts/ -v $FLAG_DIR:/flags -e LOG_FILE=$LOG_FILE -e LEAK_LOG_FILE=$LEAK_LOG_FILE"
 
 # Base mitmproxy command
 MITM_ARGS="mitmdump --listen-host $MITM_LISTEN_HOST --listen-port $MITM_LISTEN_PORT -s $SCRIPT --mode $MODE --set ssl_insecure=true --set keep_host_header=true"
