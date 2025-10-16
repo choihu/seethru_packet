@@ -1,9 +1,12 @@
-import re
+import re, os, time
 import binascii
 import pickle
 import json
+from pathlib import Path
+from base64 import b64encode, b64decode
 from typing import Any
 
+FLAG_DIR = Path("/flags")
 ENCRYPTED = True
 
 def decrypt(raw: any) -> any:
@@ -17,6 +20,23 @@ def encrypt(raw: any) -> any:
         return raw
     cypher = raw
     return cypher
+
+'''
+read bytes data and parse it with 4 bytes. Each 4 bytes presents ipv4 format data.
+'''
+def decrypt_bytes_to_ip(raw: any) -> any:
+    seen = list()
+    for i in range(0, len(raw), 4):
+        ip = bytes_to_decimals(raw[i:i+4])
+        if not ip in seen:
+            seen.append(ip)
+    return ','.join(seen)
+
+def bytes_to_decimals(data: bytes):
+    if not isinstance(data, (bytes, bytearray)):
+        raise TypeError("data must be bytes or bytearray")
+    return '.'.join([str(b) for b in data])
+    # return ':'.join([f"0x{byte:02x}" for byte in data])
 
 def deserialized(raw: str) -> Any:
     """Simplified decoder: hex -> bytes -> pickle | JSON | text.
@@ -76,6 +96,7 @@ def search_in_str(string: any, search_list: list) -> bool:
         return True
     return False
 
+
 def bytes_to_str(data) -> str:
     # Accept bytes or str; return str safely
     if isinstance(data, str):
@@ -84,8 +105,31 @@ def bytes_to_str(data) -> str:
         return data.decode('utf-8', errors='ignore')
     except Exception:
         return ""
+    
 
 def str_to_bytes(string: str) -> bytes:
     if isinstance(string, bytes):
         return string
     return (string or "").encode('utf-8')
+
+
+def get_latest_flags(num_latest_rounds):
+    now = time.time()
+    if not FLAG_DIR.is_dir():
+        return
+    
+    latest_flags = list()
+    try:
+        latest_flag_files = sorted(os.listdir(FLAG_DIR))[-num_latest_rounds:]
+    except FileNotFoundError:
+        return now, list()
+    for flag_file in latest_flag_files:
+        try:
+            with open(FLAG_DIR / flag_file, "r", encoding="utf-8", errors="ignore") as f:
+                data = f.readlines()
+                latest_flags.extend([line.rstrip('\n') for line in data])
+                latest_flags.extend([b64encode(line.rstrip('\n')) for line in data])
+                latest_flags.extend([b64encode.b64encode(line.rstrip('\n')) for line in data])
+        except Exception:
+            continue
+    return now, latest_flags

@@ -3,7 +3,7 @@ import urllib.parse
 import datetime
 import os, time
 from pathlib import Path
-from utils import search_in_str, bytes_to_str, str_to_bytes, decrypt, encrypt
+from utils import search_in_str, bytes_to_str, str_to_bytes, decrypt, encrypt, get_latest_flags
 
 #BLOCKED_STRINGS = ["app.js", "--", "..", "file:"]
 BLOCKED_STRINGS = []
@@ -14,7 +14,6 @@ MODIFIED = "SUCCESS"
 LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LOG_FILE", "log_http"))
 LEAK_LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LEAK_LOG_FILE", "leak_http"))
 
-FLAG_DIR = Path("/flags")
 FLAG = []
 _last_load = 0
 
@@ -23,26 +22,8 @@ def refresh_flags(max_age: int = 5, num_latest_rounds: int = 2):
     now = time.time()
     if now - _last_load < max_age:
         return
-    
-    if not FLAG_DIR.is_dir():
-        return
-    
-    latest_flags = list()
-    try:
-        latest_flag_files = sorted(os.listdir(FLAG_DIR))[-num_latest_rounds:]
-    except FileNotFoundError:
-        FLAG = []
-        _last_load = now
-        return
-    for flag_file in latest_flag_files:
-        try:
-            with open(FLAG_DIR / flag_file, "r", encoding="utf-8", errors="ignore") as f:
-                latest_flags.extend([line.rstrip('\n') for line in f.readlines()])
-        except Exception:
-            continue
 
-    FLAG = latest_flags
-    _last_load = now
+    _last_load, FLAG = get_latest_flags(num_latest_rounds)
 
 def log_http_flow(flow: http.HTTPFlow, log_file_path: str) -> None:
     '''
