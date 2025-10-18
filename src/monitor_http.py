@@ -2,8 +2,14 @@ from mitmproxy import http
 import urllib.parse
 import datetime
 import os, time
-from pathlib import Path
-from utils import search_in_str, bytes_to_str, str_to_bytes, decrypt, encrypt, get_latest_flags
+from utils import (
+    AsyncFileLogger,
+    FlagCache,
+    search_in_str,
+    str_to_bytes,
+    decrypt,
+    encrypt,
+)
 
 #BLOCKED_STRINGS = ["app.js", "--", "..", "file:"]
 BLOCKED_STRINGS = []
@@ -14,33 +20,27 @@ MODIFIED = "SUCCESS"
 LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LOG_FILE", "log_http"))
 LEAK_LOG_FILE_PATH = os.path.join("/scripts/logs", os.getenv("LEAK_LOG_FILE", "leak_http"))
 
-FLAG = []
-_last_load = 0
-
-def refresh_flags(max_age: int = 5, num_latest_rounds: int = 2):
-    global FLAG, _last_load
-    now = time.time()
-    if now - _last_load < max_age:
-        return
-
-    _last_load, FLAG = get_latest_flags(num_latest_rounds)
+LOGGER = AsyncFileLogger(mirror_stdout=True, name="http-log-writer")
+FLAG_CACHE = FlagCache()
+_BLOCK_METADATA_KEY = "tcp_flow_blocked"
 
 def log_http_flow(flow: http.HTTPFlow, log_file_path: str) -> None:
     '''
     Log Http Flow
     '''
     try:
-        with open(log_file_path, "a") as log_file:
-            log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
-            log_file.write(f"-------------- REQUSET --------------\n")
-            log_file.write(f"URL: {flow.request.pretty_url}\n")
-            log_file.write(f"Method: {flow.request.method}\n")
-            log_file.write(f"Headers: {dict(flow.request.headers)}\n")
-            log_file.write(f"Query Params: {dict(flow.request.query)}\n")
-            if flow.request.method in ["POST", "PUT", "PATCH"] and flow.request.content:
-                log_file.write(f"Body: {decrypt(flow.request.text)}\n\n")
-            
-            log_file.write("=" * 50 +"\n\n\n")
+        payload_parts = [
+            f"Timestamp: {datetime.datetime.now().isoformat()}\n",
+            "-------------- REQUSET --------------\n",
+            f"URL: {flow.request.pretty_url}\n",
+            f"Method: {flow.request.method}\n",
+            f"Headers: {dict(flow.request.headers)}\n",
+            f"Query Params: {dict(flow.request.query)}\n",
+        ]
+        if flow.request.method in ["POST", "PUT", "PATCH"] and flow.request.content:
+            payload_parts.append(f"Body: {decrypt(flow.request.text)}\n\n")
+        payload_parts.append("=" * 50 + "\n\n\n")
+        LOGGER.log(log_file_path, "".join(payload_parts))
     except Exception as e:
         print(f"Failed to log request: {e}")
 
@@ -97,11 +97,11 @@ def response(flow: http.HTTPFlow) -> None:
     flow.request.scheme = "http"
     # Log Every HTTP Packet
     log_http_flow(flow, f"{LOG_FILE_PATH}_{time.strftime('%H%M')}.txt")
-    refresh_flags(5, 2)
+    flags = FLAG_CACHE.get_flags()
 
     LEAKED = False
     # Log HTTP Packet when FLAG Leaked in Response
-    if search_in_response_flow(flow, FLAG):
+    if search_in_response_flow(flow, flags):
         log_http_flow(flow, f"{LEAK_LOG_FILE_PATH}_{time.strftime('%H%M')}.txt")
         LEAKED = True
 
@@ -110,13 +110,13 @@ def response(flow: http.HTTPFlow) -> None:
             if LEAKED:
                 modified_header = flow.response.headers
                 for keys, _ in dict(modified_header).items():
-                    for f in FLAG:
+                    for f in flags:
                         modified_header[keys] = modified_header[keys].replace(f, MODIFIED)
                 flow.response.headers = modified_header
 
                 if flow.response.content:
                     modified_body = decrypt(flow.response.content)
-                    for f in FLAG:
+                    for f in flags:
                         flow.response.content = encrypt(modified_body.replace(str_to_bytes(f), str_to_bytes(MODIFIED)))
     else:
         if search_in_request_flow(flow, BLOCKED_STRINGS):
@@ -128,32 +128,32 @@ def response(flow: http.HTTPFlow) -> None:
 
 def log_websocket_flow(flow: http.HTTPFlow) -> None:
     try:
-        with open(f"{LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", "a") as log_file:
-            message = flow.websocket.messages[-1]
-            direction = "Client -> Server" if message.from_client else "Server -> Client"
-
-            log_file.write("-" * 20 + "\n")
-            log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
-            log_file.write(f"Direction: {direction}\n")
-            log_file.write(f"Data (raw):\n{decrypt(message.content)}\n")
+        message = flow.websocket.messages[-1]
+        direction = "Client -> Server" if message.from_client else "Server -> Client"
+        payload = (
+            "-" * 20 + "\n"
+            + f"Timestamp: {datetime.datetime.now().isoformat()}\n"
+            + f"Direction: {direction}\n"
+            + f"Data (raw):\n{decrypt(message.content)}\n"
+        )
+        LOGGER.log(f"{LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", payload)
 
     except Exception as e:
         print(f"!!! Exception in websocket_message: {e} !!!")
 
 def log_leak_websocket_flow(flow: http.HTTPFlow):
     try:
-        with open(f"{LEAK_LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", "a") as log_file:
-            for message in flow.websocket.messages:
-                direction = "CLIENT -> SERVER" if message.from_client else "SERVER -> CLIENT"
-
-                log_file.write("-" * 20 + "\n")
-                log_file.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
-                log_file.write(f"Direction: {direction}\n")
-                log_file.write(f"Data (hex):\n{message.content.hex()}\n")
-                log_file.write(f"Data (raw):\n{decrypt(message.content)}\n")
-
-            log_file.write(f"=================================\n")
-            log_file.write(f"=================================\n\n")
+        entries = []
+        for message in flow.websocket.messages:
+            direction = "CLIENT -> SERVER" if message.from_client else "SERVER -> CLIENT"
+            entries.append("-" * 20 + "\n")
+            entries.append(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
+            entries.append(f"Direction: {direction}\n")
+            entries.append(f"Data (hex):\n{message.content.hex()}\n")
+            entries.append(f"Data (raw):\n{decrypt(message.content)}\n")
+        entries.append("=================================\n")
+        entries.append("=================================\n\n")
+        LOGGER.log(f"{LEAK_LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", "".join(entries))
     except Exception as e:
         print(f"Failed to log TCP message: {e}")
 
@@ -162,9 +162,10 @@ def websocket_start(flow: http.HTTPFlow) -> None:
     Called when a client and server have completed the WebSocket handshake.
     """
     try:
-        with open(f"{LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", "a") as log_file:
-            log_file.write(f"WebSocket Connection Started: {flow.request.pretty_url}\n")
-            log_file.write("-" * 20 + "\n")
+        LOGGER.log(
+            f"{LOG_FILE_PATH}_{time.strftime('%H%M')}.txt",
+            f"WebSocket Connection Started: {flow.request.pretty_url}\n" + "-" * 20 + "\n",
+        )
     except Exception as e:
         print(f"Failed to log WebSocket start: {e}")
 
@@ -176,11 +177,19 @@ def websocket_message(flow: http.HTTPFlow):
 
     if len(flow.websocket.messages) == 0:
         return
-    LEAKED = False
-    message = decrypt(flow.websocket.messages[-1].content)
 
-    refresh_flags(5, 2)
-    if search_in_str(message, FLAG):
+    message_obj = flow.websocket.messages[-1]
+
+    if flow.metadata.get(_BLOCK_METADATA_KEY) and not message_obj.from_client:
+        message_obj.content = b""
+        flow.websocket.kill()
+        return
+
+    message = decrypt(message_obj.content)
+    flags = FLAG_CACHE.get_flags()
+    LEAKED = False
+
+    if search_in_str(message, flags):
         log_leak_websocket_flow(flow)
         LEAKED = True
 
@@ -196,21 +205,25 @@ def websocket_message(flow: http.HTTPFlow):
                     continue
 
                 if search_in_str(plain_prev_msg, BLOCKED_STRINGS):
-                    for f in FLAG:
+                    for f in flags:
                         message = message.replace(f, MODIFIED)
-                    flow.websocket.messages[-1].content = str_to_bytes(encrypt(message))
+                    message_obj.content = str_to_bytes(encrypt(message))
                     break
     else:
-        if search_in_str(message, BLOCKED_STRINGS):
-            flow.websocket.messages[-1].content = b"no hack"
+        if message_obj.from_client and search_in_str(message, BLOCKED_STRINGS):
+            flow.metadata[_BLOCK_METADATA_KEY] = True
+            message_obj.content = str_to_bytes(encrypt("no hack"))
+            flow.webosocket.kill()
+
 
 def websocket_end(flow: http.HTTPFlow) -> None:
     """
     Called when a WebSocket connection is closed.
     """
     try:
-        with open(f"{LOG_FILE_PATH}_{time.strftime('%H%M')}.txt", "a") as log_file:
-            log_file.write(f"WebSocket Connection Ended: {flow.request.pretty_url}\n")
-            log_file.write("=" * 20 + "\n")
+        LOGGER.log(
+            f"{LOG_FILE_PATH}_{time.strftime('%H%M')}.txt",
+            f"WebSocket Connection Ended: {flow.request.pretty_url}\n" + "=" * 20 + "\n",
+        )
     except Exception as e:
         print(f"Failed to log WebSocket end: {e}")

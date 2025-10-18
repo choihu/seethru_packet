@@ -4,13 +4,15 @@ Seethrough Packet은 mitmproxy 기반으로 http, https, tcp 통신 패킷들을
 
 ## 📝 Usage
 
-- *configure_proxy_docker.py*를 통해 프록시 설정을 위한 도커를 만들 수 있습니다.
+- [*configure_proxy_docker.py*](#configure_proxy_docker.py)를 통해 프록시 설정을 위한 도커를 만들 수 있습니다.
 
-- 설정한 문제 이름으로 별도 디렉토리가 생성되며, 생성된 *run_{env_name}_{target_service}_proxy.sh*을 통해 프록시 도커를 실행할 수 있습니다.
+- 설정한 문제 이름으로 별도 디렉토리가 생성되며, 생성된 [*run_{env_name}_{target_service}_proxy.sh*](#run_{proxy_type}_{env_name}_{target_service}_proxy.sh)을 통해 프록시 도커를 실행할 수 있습니다.
 
-- *set_iptables_rules.sh* 를 통해 최상단 CHAIN을 생성한다.
+- [*set_iptables_rules.sh*](#set_iptables_rules.sh) 를 통해 최상단 CHAIN을 생성한다.
 
 - 생성한 최상단 CHAIN에 iptables 룰을 추가하여 패킷들이 Seethrough Packet을 거치도록 설정합니다.
+
+  - Example: ```sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dport 9443 -j REDIRECT --to-ports 19443```
 
 - TLS로 감싼 TCP 서비스는 PROXY_TYPE을 tls로 설정하고 서비스에서 사용하는 서버 인증서(*.crt*)와 개인키(*.key*)를 합쳐 하나의 *.pem* 번들을 만들어 CUSTOM_CERT_PATH로 지정해야 합니다.
 
@@ -130,6 +132,8 @@ Add iptables rules: sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dpo
 
 - 플래그를 가져올 수 있는 파이썬 스크립트를 형식에 맞춰 작성해야됩니다.(ex. *cargotracker.py*)
 
+- 플래그 유출 로그 기록, 플래그 유출 값 Modify 기능은 get-flag가 선행되어야 정상 작동됩니다.
+
 ### run_{proxy_type}_{env_name}_{target_service}_proxy.sh
 
 - 프록시 도커를 생성하는 쉘파일입니다.
@@ -182,7 +186,7 @@ Add iptables rules: sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dpo
 
 - 각종 유틸리티 함수가 존재합니다.
 
-- TLS 암호화가 아닌 별도 암호화(Sereializa, Encrypt with Algorithm) 존재 시 활용할 수 있는 ```encrypt(raw: str)```, ```decrypt(raw: str)```
+- TLS 암호화가 아닌 별도 인코딩 또는 암호화(serialize, Encrypt with Algorithm) 존재 시 활용할 수 있는 ```encrypt(raw: str)```, ```decrypt(raw: str)```가 있습니다.
 
 - 위 함수는 *monitor_\*.py* 에 기본 적용되어 있으며, 해당 부분에 별도 암복호화를 추가하여 패킷을 평문으로 바꿔 볼 수 있습니다.
 
@@ -190,10 +194,6 @@ Add iptables rules: sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dpo
 
 - 로그가 저장되는 디렉토리입니다.
 
-- *leak_{proxy_type}_{env_name}_{target_service}_{target_port}_{time}.txt*: get_flag에서 저장한 플래그 값을 기준으로 response에 FLAG가 유출됐을 시 기록됨.
+- *leak_{proxy_type}_{env_name}_{target_service}_{target_port}_{time}.txt*: get_flag에서 저장하는 플래그 값을 기준으로 response에 FLAG가 유출됐을 시 기록됨.
 
 - *log_{proxy_type}_{env_name}_{target_service}_{target_port}_{time}.txt*: 모든 로그를 기록함
-
-### flags
-
-- 플래그가 저장되는 디렉토리입니다.
