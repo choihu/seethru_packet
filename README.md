@@ -1,199 +1,102 @@
 # 👀 Seethru Packet
 
-Seethrough Packet은 mitmproxy 기반으로 http, https, tcp 통신 패킷들을 기록하며, get-flag.py를 실행해 플래그 값을 추출해올 시 플래그가 유출되는 패킷을 별도 파일에 기록합니다. 블랙리스트 문자열들을 설정하여 특정 패킷들을 차단할 수 있으며, Modify 기능 활성화 시 공격 패킷을 바로 차단하지 않고 플래그 유출이 감지되었을 때, 응답 플래그를 원하는 값으로 변경할 수 있습니다.
+mitmproxy 기반으로 HTTP/HTTPS/TCP/SSH 트래픽을 프록시하고 패킷/FLAG 유출 로그를 기록합니다. ```ENABLE_MODIFY=True```로 설정 시, FLAG 값을 원하는 ```MODIFIED``` 값으로 변경하여 response 합니다.
 
-## 📝 Usage
+- 프록시 스크립트 생성: `python3 configure_proxy_docker.py`
+- iptables 체인 준비: `sudo ./set_iptables_rules.sh`
+- 프록시 실행: `./{env}/run_{env}_{service}_proxy.sh`
+- 리다이렉트 룰 추가 예시: `sudo iptables -t nat -A MITM -p tcp ! -s 127.0.0.0/24 --dport <원본포트> -j REDIRECT --to-ports <프록시포트>`
 
-- [*configure_proxy_docker.py*](#configure_proxy_docker.py)를 통해 프록시 설정을 위한 도커를 만들 수 있습니다.
+## Simple Usage
 
-- 설정한 문제 이름으로 별도 디렉토리가 생성되며, 생성된 [*run_{env_name}_{target_service}_proxy.sh*](#run_{proxy_type}_{env_name}_{target_service}_proxy.sh)을 통해 프록시 도커를 실행할 수 있습니다.
-
-- [*set_iptables_rules.sh*](#set_iptables_rules.sh) 를 통해 최상단 CHAIN을 생성한다.
-
-- 생성한 최상단 CHAIN에 iptables 룰을 추가하여 패킷들이 Seethrough Packet을 거치도록 설정합니다.
-
-  - Example: ```sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dport 9443 -j REDIRECT --to-ports 19443```
-
-- TLS로 감싼 TCP 서비스는 PROXY_TYPE을 tls로 설정하고 서비스에서 사용하는 서버 인증서(*.crt*)와 개인키(*.key*)를 합쳐 하나의 *.pem* 번들을 만들어 CUSTOM_CERT_PATH로 지정해야 합니다.
-
-- HTTPS 서비스는 PROXY_TYPE을 https로 설정하고 서비스에서 사용하는 서버 인증서(*.crt*)와 개인키(*.key*)를 합쳐 하나의 *.pem* 번들을 만들어 CUSTOM_CERT_PATH로 지정해야 합니다.
-
-- CUSTOM_CERT_PATH는 *seethrue_packet/{env_name}* 경로부터 상대 경로로 지정합니다.
-
-
-### Usage Example
+1) iptables 체인 준비(최상단 MITM 체인 생성)
 
 ```bash
-#프록시 도커 초기 설정
-~/seethru_packet$ python3 configure_proxy_docker.py 
-========================================
-=== MITM Proxy Configuration Wizard  ===
-========================================
+$ sudo ./set_iptables_rules.sh
 
---- Available Wargame Environments ---
-  [1] atc
-  [2] contractor
-  [3] https_test
-  [4] aisplus
-Please choose an option (1-4): 3
-
---- Exposed Services in 'https_test' ---
-  [1] https_post:9443
-Please choose an option (1-1): 1
-
---- Protocol for the selected port ---
-  [1] http
-  [2] https
-  [3] tcp
-  [4] tls
-Please choose an option (1-4): 2
-Use custom certificate? (if unsure, say no) [y/N]: y
-Enter path to .pem file (relative to MITM_PROXY dir) [default: /cs/services/https_test/haproxy/backend.pem]: server.pem
-
-----------------------------------------
-[SUCCESS] Generated proxy script: https_test/run_https_test_https_post_proxy.sh
-----------------------------------------
-To use it:
-  1. In Seethru_Packet dir and run: ./https_test/run_https_test_https_post_proxy.sh
-  2. Check iptables rules: sudo iptables -t nat -L --line-numbers -n -v
-  3. If MITM chain doesnt exist: sudo ./set_iptables_rules.sh
-  4. Add iptables rules: sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dport 9443 -j REDIRECT --to-ports 19443
-
-~/seethru_packet$ cd https_test/
-
-#https 복호화를 위한 인증서 파일 생성
-~/seethru_packet/https_test$ cat server.crt server.key > server.pem
-
-#프록시 도커 생성
-~/seethru_packet/https_test$ ./run_https_test_https_post_proxy.sh 
-[INFO] Using custom certificate: server.pem
---- Preparing Proxy ---
-  Container: mitmproxy_https_post_9443
-  Network:   https_test_default
-  Log File:  log_https_https_post_9443
-
---- Proxying --- 
-  Clients connect to  ==> https://<your_vm_ip>:19443
-  Proxy forwards to   ==> reverse:https://127.0.0.1:9443
-
-[INFO] Stopping and removing old container if it exists...
-[INFO] Starting new proxy container...
-24ae00748e0eccb53b5c181b06e86cb590ecdb54863d86c7f52a8e818bce85f2
-[SUCCESS] Proxy container 'mitmproxy_https_post_9443' started.
-Add iptables rules: sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dport 9443 -j REDIRECT --to-ports 19443
-
-~/seethru_packet/https_test$ cd ..
-
-#IPTABLES Chain 생성
-~/seethru_packet$ sudo ./set_iptables_rules.sh 
-
-#IPTABLES Rule 추가
-~/seethru_packet/https_test$ sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dport 9443 -j REDIRECT --to-ports 19443
+$ sudo iptables -t nat -L --line-numbers -n -v   # 확인
 ```
 
-## 🛠️ Mechanism
-
-### configure_proxy_docker.py
-
-- ```WARGAME_DIR = "/cs/services"```에서 문제 리스트를 읽어옵니다.
-
-- 선택한 문제에서 *docker-compose.yml*을 읽어와 문제에서 사용하는 포트 등 정보들을 불러옵니다.
-
-- 문제 도커 환경 중 seethru_packet을 적용할 서비스, 포트 등을 선택합니다.
-
-- 선택한 정보들을 바탕으로 문제 환경 이름으로 폴더를 생성하고, ```/scripts``` 폴더의 템플릿들과 ```/src``` 폴더의 원본 ```monitor_*.py``` 등 파일로 초기 설정을 완료합니다.
+2) 프록시 스크립트 생성 및 실행
 
 ```bash
-└── {env_name}
-    ├── logs
-    │   ├── leak_https_https_post_9443_0027.txt
-    │   └── log_https_https_post_9443_0024.txt
-    ├── monitor_http.py
-    ├── monitor_tcp.py
-    ├── run_{proxy_type}_{env_name}_{target_sevice}_proxy.sh
-    ├── server.pem # if needed
-    ├── tls_wrapper.sh
-    └── utils.py
-``` 
+$ python3 configure_proxy_docker.py
 
-### set_iptables_rules.sh
+$ ./{env}/run_{env}_{service}_proxy.sh
 
-- MITM이라는 이름의 IPTABLES 룰 체인을 생성합니다.
+# 실행 출력 마지막 줄을 참고해 리다이렉트 룰 추가
+$ sudo iptables -t nat -A MITM -p tcp ! -s 127.0.0.0/24 --dport <원본포트> -j REDIRECT --to-ports <프록시포트>
+```
 
-- MITM은 최상단 룰로 모든 패킷이 해당 룰을 거치게 됩니다.
+3) 로그 뷰어(선택)
 
-- 이 체인에 IPTABLES 룰을 추가해 seethru_packet 도커로 패킷이 리다이렉트 되도록 설정합니다.
+```bash
+$ python3 {env}/logs/web.py -p 14284 --password <원하면>
+```
 
-### get-flag.py
+4) get-flag(선택)
 
-- *2024 Packet-Capture*에 있던 *get-flag.py*를 사용했습니다.
+```bash
+$ python3 get-flag.py --name cargotracker start
+$ python3 get-flag.py --name cargotracker status
+$ python3 get-flag.py --name cargotracker stop
+```
 
-- 주기적으로 우리 측 플래그를 업데이트하여 파일로 저장합니다.
+* 프록시 컨테이너는 `{repo_root}/flags/{env}`를 `/flags`로 마운트합니다.
+* get-flag.py를 실행하기 위해선 문제에 따라 flag를 추출해오는 스크립트를 get_flag 경로에 저장해야합니다.
 
-- 플래그를 가져올 수 있는 파이썬 스크립트를 형식에 맞춰 작성해야됩니다.(ex. *cargotracker.py*)
+## 구성 요소
 
-- 플래그 유출 로그 기록, 플래그 유출 값 Modify 기능은 get-flag가 선행되어야 정상 작동됩니다.
+- configure_proxy_docker.py
+  - `WARGAME_DIR = "/cs/services"`에서 환경 목록을 읽고 `docker-compose.yml`을 파싱해 실행 환경을 탐지합니다.
+  - 선택한 정보로 `{env}` 디렉토리를 만들고, 모니터 스크립트와 템플릿, TLS 래퍼, 로그 뷰어 등을 복사합니다.
+  - 실행 스크립트 `run_{env}_{service}_proxy.sh`를 생성합니다.
 
-### run_{proxy_type}_{env_name}_{target_service}_proxy.sh
+- scripts/run_proxy_template.sh, scripts/run_proxy_template_ssh.sh
+  - Docker 이미지 `mitmproxy/mitmproxy`(HTTP/HTTPS/TCP/TLS) 또는 ssh-mitm(SSH)를 사용합니다.
+  - 생성된 `run_*` 스크립트는 직접 수정하지 말고 템플릿을 수정한 뒤 재생성하세요.
 
-- 프록시 도커를 생성하는 쉘파일입니다.
+- src/monitor_http.py, src/monitor_tcp.py
+  - mitmdump 기반의 플러그인으로 개발됨
+  - 공통: `{env}/logs/log_*_{HHMM}.txt`에 모든 트래픽을 저장, `/flags` 하위 최근 플래그와 매칭되면 `{env}/logs/leak_*_{HHMM}.txt`로 별도 저장.
+  - 차단: `BLOCKED_STRINGS`에 포함된 문자열이 요청(HTTP) 또는 클라이언트 메시지(TCP)에 있으면 차단하거나, Modify 모드에서는 유출 응답만 치환.
+  - HTTP는 WebSocket 메시지도 로깅/누출 탐지/치환 로직 포함.
 
-- 쉘파일 실행 시 마지막에 나오는 IPTABLES룰을 추가해야 정상작동합니다.
+- src/utils.py
+  - `FlagCache`가 `/flags`에서 최신 라운드 플래그를 비동기 갱신.
+  - `encrypt`/`decrypt` 훅으로 서비스 고유 인코딩/암호화 해제를 주입 가능.
 
-- *monitor_\*.py* 등에서 차단 구문 수정 시 이 쉘 파일을 실행하여 도커를 다시 빌드해줘야 적용됩니다.
+- get-flag.py, get_flag/*
+  - `settings.yml` 스케줄을 기준으로 `{repo_root}/flags/{service}`에 플래그 파일 기록.
+  - 예시: `get_flag/cargotracker.py`
 
-### monitor_tcp.py
+- set_iptables_rules.sh
+  - NAT PREROUTING에 `MITM` 체인을 최상단으로 생성/유지. 개별 포트 리다이렉트는 MITM 체인에 추가.
 
-- TCP socat 통신을 담당하는 파이썬 스크립트입니다.
+- bin/
+  - 로컬 mitmproxy 바이너리가 포함되어 있으나, 생성 스크립트는 기본적으로 Docker 이미지 `mitmproxy/mitmproxy`를 사용합니다.
 
-- TCP 통신 발생 시 ```tcp_message(flow: tcp.TCPFlow)``` 함수가 실행되어 추가적인 동작을 수행합니다.
+## 프로토콜별 안내
 
-- 모든 패킷 로깅, 플래그 유출 패킷 로깅, 공격 구문 차단, ```ENABLE_MODIFY = True```로 활성화 시 유출되는 플래그 값 변조 등 기능이 존재합니다.
+- HTTP/HTTPS
+  - HTTPS는 서버 인증서(.crt)+개인키(.key)를 결합한 PEM 번들을 `CUSTOM_CERT_PATH`로 지정.
+  - 예: `cat server.crt server.key > server.pem`
 
-- ```BLOCKED_STRINGS = []```에서 차단 구문을 지정할 수 있습니다.
+- TCP
+  - 평문 TCP는 `mitmdump --mode reverse:tcp://`로 프록시.
 
-- ```MODIFIED = "FLAG;rm -rf /"```로 유출되는 플래그 값 변조가 가능합니다.
+- TLS(임의 TCP+TLS)
+  - 컨테이너 내 `tls_wrapper.sh`가 양단 TLS를 처리, mitmproxy에는 평문 TCP 전달. PEM 번들 필수.
 
-- TLS를 통한 TCP socat 통신 시, ***server.pem* 파일이 필요합니다**
- 
-    ```bash
-    $ cat server.crt server.key > server.pem
-    ```
+- SSH
+  - `{env}` 디렉토리에 포함된 ssh-mitm 이미지를 빌드해 실행.
+  - 필요 입력: 호스트키 알고리즘, 서버/클라이언트 개인키 경로, 로그인 사용자명.
+  - FLAG 유출 탐지 기능 외, 다른 기능은 불안정한 경우가 많아 수정 필요.
+  - `ssh-mitm/sshmitm/plugins/ssh/seethru.py`를 플러그인으로 사용하여 원하는 기능을 수행하도록 수정 가능.
 
-- TLS로 감싼 TCP 서비스는 PROXY_TYPE을 tls로 설정하면 프록시 컨테이너 내부에서 *tls_wrapper.sh*이  openssl socat을 통해 클라이언트↔프록시, 프록시↔원본 서비스 양방향 TLS를 처리하고, mitmproxy에는 평문 TCP를 전달합니다.
+## 로그와 파일
 
-### monitor_http.py
-
-- HTTP 통신을 담당하는 파이썬 스크립트입니다.
-
-- HTTP Response 발생 시 ```response(flow: http.HTTPFlow)``` 함수가 실행되어 추가적인 동작을 수행합니다.
-
-- 모든 패킷 로깅, 플래그 유출 패킷 로깅, 공격 구문 차단, ```ENABLE_MODIFY = True```로 활성화 시 유출되는 플래그 값 변조 등 기능이 존재합니다.
-
-- ```BLOCKED_STRINGS = []```에서 차단 구문을 지정할 수 있습니다.
-
-- ```MODIFIED = "FLAG;rm -rf /"```로 유출될 플래그 값을 어떤 값으로 수정할 지 설정할 수 있습니다.
-
-- HTTPS 통신 시, ***server.pem* 파일이 필요합니다.**
-
-    ```bash
-    $ cat server.crt server.key > server.pem
-    ```
-
-- mitmdump 옵션 중 --certs 옵션을 통해 자동으로 HTTPS 통신 암복호화를 진행합니다.
-
-### utils.py
-
-- 각종 유틸리티 함수가 존재합니다.
-
-- TLS 암호화가 아닌 별도 인코딩 또는 암호화(serialize, Encrypt with Algorithm) 존재 시 활용할 수 있는 ```encrypt(raw: str)```, ```decrypt(raw: str)```가 있습니다.
-
-- 위 함수는 *monitor_\*.py* 에 기본 적용되어 있으며, 해당 부분에 별도 암복호화를 추가하여 패킷을 평문으로 바꿔 볼 수 있습니다.
-
-### logs
-
-- 로그가 저장되는 디렉토리입니다.
-
-- *leak_{proxy_type}_{env_name}_{target_service}_{target_port}_{time}.txt*: get_flag에서 저장하는 플래그 값을 기준으로 response에 FLAG가 유출됐을 시 기록됨.
-
-- *log_{proxy_type}_{env_name}_{target_service}_{target_port}_{time}.txt*: 모든 로그를 기록함
+- 일반 로그: `{env}/logs/log_<proto>_<service>_<port>_{HHMM}.txt`
+- 유출 로그: `{env}/logs/leak_<proto>_<service>_<port>_{HHMM}.txt`
+- 로그 뷰어: `python3 {env}/logs/web.py -p 14284`
+  - 웹으로 로그를 공유해 쉽게 확인할 수 있도록 함.

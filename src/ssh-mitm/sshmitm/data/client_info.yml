@@ -1,0 +1,430 @@
+AbsoluteTelnet:
+  name: AbsoluteTelnet
+  url: http://www.celestialsoftware.net/
+  client: true
+  server: false
+  version_regex:
+    - 'SSH-2.0-([0-9]+\.[0-9]+) sshlib: AbsoluteTelnet'
+AsyncSSH:
+  name: AsyncSSH
+  url: https://asyncssh.readthedocs.io/en/latest/
+  client: true
+  server: true
+  version_regex:
+    - ssh-2.0-asyncssh_([0-9]+\.[0-9]+\.[0-9]+)
+TrileadSSH2:
+  name: Trilead SSH2
+  url: https://github.com/connectbot/sshlib
+  client: true
+  server: false
+  version_regex:
+    -  ssh-2.0-trileadssh2java_([0-9]+)
+Dropbear:
+  name: Dropbear
+  url: https://matt.ucc.asn.au/dropbear/dropbear.html
+  client: true
+  server: true
+  version_regex:
+    - ssh-2.0-dropbear_([0-9]+\.[0-9]+)
+  vulnerabilities:
+    CVE-2023-48795:
+      version_max: 2022.83
+      cvss: 5.9
+      description: Terrapin attack
+    CVE-2021-36369:
+      version_max: 2020.81
+      cvss: 7.5
+      docs: true
+      description: trivial authentication attack to bypass FIDO tokens and SSH-ASKPASS
+    CVE-2018-15599:
+      version_max: 2018.76
+      cvss: 5.0
+      description: remote users may enumerate users on the system
+JSCH:
+  name: JSch - Java Secure Channel
+  url: https://github.com/mwiede/jsch
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-jsch-([0-9]+\.[0-9]+\.[0-9]+)
+KiTTY:
+  name: KiTTY
+  url: http://www.9bis.net/kitty
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-putty_kitty
+libssh:
+  name: libssh
+  url: https://www.libssh.org/
+  client: true
+  server: true
+  version_regex:
+    - ssh-2.0-libssh_([0-9]+\.[0-9]+\.[0-9]+)
+libssh2:
+  name: libssh2
+  url: https://www.libssh2.org/
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-libssh2_([0-9]+\.[0-9]+\.[0-9]+)
+MoTTY_Release:
+  name: MobaXterm
+  url: https://mobaxterm.mobatek.net/
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-motty_release_(0\.[0-9]+)
+  vulnerabilities:
+    CVE-2021-36367:
+      version-max:
+      cvss: 8.1
+      docs: true
+    CVE-2021-28847:
+      version-max: 0.73
+      cvss: 7.5
+    CVE-2020-14002:
+      version_max:
+      cvss: 4.3
+      docs: true
+OpenSSH:
+  name: OpenSSH
+  url: https://www.openssh.com/
+  client: true
+  server: true
+  version_regex:
+    - ssh-2.0-openssh_([0-9]+\.[0-9]+)p?.*
+  vulnerabilities:
+    CVE-2023-51767:
+      version_max: 9.6
+      cvss: 7.0
+      description: Row hammer threat allows authentication bypass in shared DRAM.
+    CVE-2023-51385:
+      version_max: 9.5
+      cvss: 6.5
+      description: OS command injection through expansion tokens referencing usernames or hostnames containing shell metacharacters in certain configurations
+    CVE-2023-51384:
+      version_max: 9.5
+      cvss: 5.5
+      description: ssh-agent applies destination constraints only to the first PKCS#11 key
+    CVE-2023-48795:
+      version_max: 9.5
+      cvss: 5.9
+      description: Terrapin attack
+    CVE-2023-38408:
+      version_max: 9.2
+      cvss: 9.8
+      description: The PKCS#11 feature has a vulnerable search path in ssh-agent, enabling remote code execution.
+    CVE-2023-28531:
+      version_min: 8.9
+      version_max: 9.2
+      cvss: 9.8
+      description: ssh-add improperly adds smartcard keys to ssh-agent, bypassing intended destination restrictions.
+    CVE-2023-25136:
+      version_min: 9.1
+      version_max: 9.1
+      cvss: 6.5
+      docs: true
+      description: A double-free vulnerability allows unauthenticated remote attackers to potentially execute code by manipulating memory.
+    CVE-2016-20012:
+      version_max: 8.7
+      cvss: N/A
+      docs: true
+      description: enumerate usernames via challenge response
+    CVE-2021-41617:
+      version_min: 6.2
+      version_max: 8.7
+      cvss: 7.0
+      description: Certain configurations allow privilege escalation due to improperly initialized supplemental groups in sshd.
+    CVE-2021-36368:
+      version_max: 8.8
+      cvss: 3.7
+      docs: true
+      description: A vulnerability allows attackers to modify server settings undetected, potentially misusing FIDO authentication confirmations.
+    CVE-2021-28041:
+      version_min: 8.2
+      version_max: 8.4
+      cvss: 4.6
+      description: ssh-agent has a double free vulnerability affecting legacy systems with unrestricted socket access.
+    CVE-2020-15778:
+      version_max: 8.2
+      cvss: 6.8
+      docs: true
+      description: SCP allows command injection via backtick characters in destination arguments, risking workflow integrity.
+    CVE-2020-14145:
+      version_min: 5.7
+      version_max: 8.9
+      cvss: 4.3
+      docs: true
+      description: Observable discrepancy in client-side algorithm negotiation allows information leaks, enabling man-in-the-middle attacks.
+    CVE-2020-12062:
+      version_min: 8.2
+      version_max: 8.2
+      cvss: 5.0
+      description: arbitrary files overwrite via scp
+    CVE-2019-16905:
+      version_min: 7.7
+      version_max: 8.0
+      cvss: 4.4
+      description: memory corruption and local code execution via pre-authentication integer overflow
+    CVE-2019-6111:
+      version_max: 7.9
+      cvss: 5.8
+      docs: true
+      description: arbitrary files overwrite via scp
+    CVE-2019-6110:
+      version_max: 7.9
+      cvss: 4.0
+      docs: true
+      description: output manipulation
+    CVE-2019-6109:
+      version_max: 7.9
+      cvss: 4.0
+      docs: true
+      description: output manipulation
+    CVE-2018-20685:
+      version_max: 7.9
+      cvss: 2.6
+      description: directory permissions modification via scp
+    CVE-2018-15919:
+      version_min: 5.9
+      version_max: 7.8
+      cvss: 5.0
+      description: username enumeration via GS2
+    CVE-2018-15473:
+      version_max: 7.7
+      cvss: 5.0
+      description: enumerate usernames due to timing discrepancies
+    CVE-2017-15906:
+      version_max: 7.5
+      cvss: 5.0
+      description: readonly bypass via sftp
+    CVE-2016-10708:
+      version_max: 7.3
+      cvss: 5.0
+    CVE-2016-10012:
+      version_max: 7.3
+      cvss: 7.2
+    CVE-2016-10011:
+      version_max: 7.3
+      cvss: 2.1
+    CVE-2016-10010:
+      version_max: 7.3
+      cvss: 6.9
+    CVE-2016-10009:
+      version_max: 7.3
+      cvss: 7.5
+Paramiko:
+  name: Paramiko
+  url: https://www.paramiko.org/
+  client: true
+  server: true
+  version_regex:
+    - ssh-2.0-paramiko_([0-9]+\.[0-9]+\.[0-9]+)
+  vulnerabilities:
+    CVE-2022-24302:
+      version_max: 2.10.1
+      cvss: 4.3
+    CVE-2018-1000805:
+      version_max: 2.4.1
+      cvss: 6.5
+    CVE-2018-7750:
+      version_max: 2.4.1
+      cvss: 7.5
+PuTTYFileZilla:
+  name: FileZilla
+  url: https://filezilla-project.org/
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-puttyfilezilla_([0-9]+\.[0-9]+\.[0-9]+)
+    - ssh-2.0-filezilla_([0-9]+\.[0-9]+\.[0-9]+)
+PuTTY_Release:
+  name: PuTTY
+  url: https://www.chiark.greenend.org.uk/~sgtatham/putty/
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-putty_release_(0\.[0-9]+)
+  vulnerabilities:
+    CVE-2024-31497:
+      version_min: 0.68
+      version_max: 0.80
+      cvss: N/A
+      description: ecdsa private key recovery by malicious remote server
+    CVE-2023-48795:
+      version_max: 0.79
+      cvss: 5.9
+      description: Terrapin attack
+    CVE-2021-36367:
+      version_max: 0.71
+      cvss: 8.1
+      docs: true
+    CVE-2021-33500:
+      version_min:
+      version_max: 0.74
+      cvss: 5.0
+      docs: true
+    CVE-2020-14002:
+      version_min: 0.68
+      version_max: 0.73
+      cvss: 4.3
+      docs: true
+    CVE-2019-17069:
+      version_max: 0.73
+      cvss: 5.0
+      description: potential DOS by remote SSHv1 server
+    CVE-2019-17068:
+      version_max: 0.73
+      cvss: 5.0
+      description: xterm bracketed paste mode command injection
+    CVE-2019-9898:
+      version_max: 0.71
+      cvss: 7.5
+      description: potential recycling of random numbers
+    CVE-2019-9897:
+      version_max: 0.71
+      cvss: 5.0
+      description: multiple denial-of-service issues from writing to the terminal
+    CVE-2019-9894:
+      version_max: 0.71
+      cvss: 6.4
+      description: buffer overflow in RSA key exchange
+    CVE-2017-6542:
+      version_max: 0.68
+      cvss: 7.5
+      description: buffer overflow in UNIX client that can result in privilege escalation or denial-of-service
+    CVE-2016-6167:
+      version_min: 0.67
+      version_max: 0.67
+      cvss: 7.8
+    CVE-2013-4852:
+      version_max: 0.62
+      cvss: 6.8
+    CVE-2013-4208:
+      version_max: 0.63
+      cvss: 2.1
+    CVE-2013-4207:
+      version_max: 0.63
+      cvss: 4.3
+    CVE-2013-4206:
+      version_max: 0.63
+      cvss: 6.8
+    CVE-2011-4607:
+      version_max: 0.61
+      cvss: 2.1
+    CVE-2006-7162:
+      version_max: 0.59
+      cvss: 1.9
+    CVE-2005-0467:
+      version_max: 0.56
+      cvss: 7.5
+    CVE-2004-1440:
+      version_max: 0.55
+      cvss: 7.5
+    CVE-2004-1008:
+      version_max: 0.56
+      cvss: 10
+    CVE-2003-0069:
+      version_max: 0.53
+      cvss: 7.5
+    CVE-2003-0048:
+      version_max: 0.53
+      cvss: 4.6
+    CVE-2000-0476:
+      version_max: 0.48
+      cvss: 5.0
+RubyNetSsh:
+  name: Net::SSH
+  url: http://net-ssh.github.io/net-ssh/
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-ruby/net::ssh_([0-9]+\.[0-9]+\.[0-9]+)\s+.*
+SecureBlackbox:
+  name: /n software, Inc.
+  url: https://www.nsoftware.com/ipworks/ssh/
+  client: true
+  server: false
+  version_regex:
+    - 'ssh-2\.0-secureblackbox\.([0-9]+)'
+SSH.NET:
+  name: SSH.NET
+  url: https://github.com/sshnet/SSH.NET/
+  client: true
+  server: false
+  version_regex:
+    - 'ssh-2.0-renci.sshnet.sshclient.([0-9]+.[0-9]+.[0-9]+)'
+ssh2-streams:
+  name: ssh2-streams.
+  url: https://github.com/mscdex/ssh2-streams
+  client: true
+  server: false
+  version_regex:
+    - 'ssh-2.0-ssh2js([0-9]+\.[0-9]+\.[0-9]+)'
+TeraTermVT:
+  name: Tera Term
+  url: http://ttssh2.osdn.jp/
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-ttssh/([0-9]+\.[0-9]+).*
+TotalCommander:
+  name: TotalCommander SFTP Plugin (Android)
+  url: https://www.ghisler.com/androidplugins/googleplay/
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-sshj_version_unknown
+TTYEmulator:
+  name: TTYEmulator
+  url: https://www.ttyemulator.com/
+  client: true
+  server: false
+  version_regex:
+    - SSH-2.0-TTYEmul_([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)
+WinSCP:
+  name: WinSCP
+  url: https://winscp.net
+  client: true
+  server: false
+  version_regex:
+    - ssh-2.0-winscp_release_
+  vulnerabilities:
+    CVE-2021-3331:
+      version_max: 6.17.10
+      cvss: 10.0
+      description: execute arbitrary programs when the URL handler encounters a crafted URL that loads session settings
+    CVE-2020-28864:
+      version_max: 5.17.8
+      cvss: 7.5
+      description: A buffer overflow allows a malicious FTP server to cause a denial of service or possibly have other unspecified impact via a long file name
+    CVE-2018-20684:
+      version_max: 5.14
+      cvss: 6.4
+      description: due to missing validation, the scp implementation would accept arbitrary files sent by the server
+    CVE-2014-2735:
+      version_max: 5.5.3
+      cvss: 5.8
+    CVE-2013-4852:
+      version_max: 5.1.4
+      cvss: 6.8
+    CVE-2007-4909:
+      version_max: 4.0.4
+      cvss: 9.3
+    CVE-2006-3015:
+      version_max: 3.8.1
+      cvss: 7.1
+      description: Argument injection vulnerability allows remote attackers to upload or download arbitrary files
+WolfSSH:
+  name: WolfSSH
+  url: https://www.wolfssl.com/products/wolfssh/
+  client: true
+  server: true
+  version_regex:
+    - ssh-2.0-wolfsshv([0-9]+\.[0-9]+\.[0-9]+)
+  vulnerabilities:
+    CVE-2022-32073:
+      version-max: 1.4.7
+      cvss: 9.8
+      description: integer overflow via the function wolfSSH_SFTP_RecvRMDIR

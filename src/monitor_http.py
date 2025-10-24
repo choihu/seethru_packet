@@ -35,8 +35,12 @@ def log_http_flow(flow: http.HTTPFlow, log_file_path: str) -> None:
             f"URL: {flow.request.pretty_url}\n",
             f"Method: {flow.request.method}\n",
             f"Headers: {dict(flow.request.headers)}\n",
-            f"Query Params: {dict(flow.request.query)}\n",
+            f"Query Params:\n"
         ]
+        for key, value in dict(flow.request.query).items():
+            payload_parts.append(f"  {key}: {decrypt(value)}\n")
+        payload_parts.append("\n")
+
         if flow.request.method in ["POST", "PUT", "PATCH"] and flow.request.content:
             payload_parts.append(f"Body: {decrypt(flow.request.text)}\n\n")
         payload_parts.append("=" * 50 + "\n\n\n")
@@ -73,6 +77,13 @@ def search_in_request_flow(flow: http.HTTPFlow, search_strings) -> bool:
     decoded_url = url_decode(url_decode(flow.request.pretty_url.lower()))
     if search_in_str(decoded_url, search_strings):
         return True
+
+    # Search string in GET paremeter
+    for key, value in dict(flow.request.query).items():
+        if search_in_str(key, search_strings):
+            return True
+        if search_in_str(decrypt(value), search_strings):
+            return True
 
     # Search string in request text
     if flow.request.method in ["POST", "PUT", "PATCH"] and flow.request.content:

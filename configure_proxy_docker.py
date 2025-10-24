@@ -1,12 +1,9 @@
-
 import os
 import sys
-import subprocess
 from pathlib import Path
 import shutil
 
 WARGAME_DIR = "/cs/services"
-TEMPLATE_FILE = "scripts/run_proxy_template.sh"
 
 try:
     import yaml
@@ -84,7 +81,7 @@ def main():
     #target_port = services[target_service]['ports'][0].split(':')[1] # Get internal port
 
     # 3. Choose protocol
-    protocol = choose_from_list(["http", "https", "tcp", "tls"], "Protocol for the selected port")
+    protocol = choose_from_list(["http", "https", "tcp", "tls", "ssh"], "Protocol for the selected port")
 
     # 4. Ask for custom certificate
     custom_cert = ""
@@ -102,35 +99,64 @@ def main():
         if use_cert == 'y':
             default_hint = f" [default: {cert_guess_path}]" if cert_guess_path else ""
             custom_cert = input(
-                f"Enter path to .pem file (relative to MITM_PROXY dir){default_hint}: "
+                f"Enter path to .pem file (relative to seethru_packet/{env_name} dir){default_hint}: "
             ).strip()
             if not custom_cert and cert_guess_path:
                 custom_cert = cert_guess_path
+    if protocol == "ssh":
+        key_algorithm = input(
+            f"Enter key generation algorithm used for SERVER private key(ex: rsa, ed25519): "
+        ).strip()
+        server_key = input(
+            f"Enter path to SERVER private key file (relative to seethru_packet/{env_name} dir): "
+        ).strip()
+        client_key = input(
+            f"Enter path to CLIENT private key file (relative to seethru_packet/{env_name} dir): "
+        ).strip()
+        username = input(
+            f"Enter username used for login: "
+        ).strip()
+
+        
 
     # 5. Generate the script
     network_name = f"{env_name}_default"
     output_filename = f"{env_name}/run_{env_name}_{target_service}_proxy.sh"
 
+    if protocol == "ssh":
+        TEMPLATE_FILE = "scripts/run_proxy_template_ssh.sh"
+    else:
+        TEMPLATE_FILE = "scripts/run_proxy_template.sh"
     with open(TEMPLATE_FILE, 'r') as f:
         template = f.read()
 
     BASE_DIR = Path(__file__).parent.resolve()
     service_dir = BASE_DIR / env_name
-    if not service_dir.is_dir():
-        service_dir.mkdir(parents=True, exist_ok=True)
+
+    if protocol == 'ssh':
+        shutil.copytree("src/ssh-mitm", service_dir)
+    else:
+        if not service_dir.is_dir():
+            service_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy("src/monitor_http.py", service_dir)
         shutil.copy("src/monitor_tcp.py", service_dir)
         shutil.copy("src/utils.py", service_dir)
 
+        wrapper_src = Path("scripts/tls_wrapper.sh")
+        wrapper_dst = service_dir / "tls_wrapper.sh"
+        if wrapper_src.is_file():
+            shutil.copy(wrapper_src, wrapper_dst)
+            wrapper_dst.chmod(0o755)
+
     # Ensure TLS wrapper script is available for TLS proxies
-    wrapper_src = Path("scripts/tls_wrapper.sh")
-    wrapper_dst = service_dir / "tls_wrapper.sh"
-    if wrapper_src.is_file():
-        shutil.copy(wrapper_src, wrapper_dst)
-        wrapper_dst.chmod(0o755)
     log_dir = service_dir / "logs"
+    flag_dir = BASE_DIR / "flags" / env_name
     if not log_dir.is_dir():
         log_dir.mkdir(parents=True, exist_ok=True)
+    log_dir.chmod(0o777)
+    shutil.copy("src/web.py", log_dir)
+    if not flag_dir.is_dir():
+        flag_dir.mkdir(parents=True, exist_ok=True)
     log_dir.chmod(0o777)
 
     # Replace placeholders - a bit simplistic but works for this template
@@ -142,6 +168,13 @@ def main():
     script_content = script_content.replace('NETWORK_NAME="my_wargame_default"', f'NETWORK_NAME="{network_name}"')
     script_content = script_content.replace('CUSTOM_CERT_PATH=""', f'CUSTOM_CERT_PATH="{custom_cert}"')
     script_content = script_content.replace('ENV_NAME="my_docker_environment"', f'ENV_NAME="{env_name}"')
+
+    if protocol == 'ssh':
+        script_content = script_content.replace('HOST_KEY_ALGORITHM=""', f'HOST_KEY_ALGORITHM="{key_algorithm}"')
+        script_content = script_content.replace('SERVER_KEY_PATH=""', f'SERVER_KEY_PATH="{server_key}"')
+        script_content = script_content.replace('CLIENT_KEY_PATH=""', f'CLIENT_KEY_PATH="{client_key}"')
+        script_content = script_content.replace('AUTH_USERNAME="remote"', f'AUTH_USERNAME="{username}"')
+        
 
     with open(output_filename, 'w') as f:
         f.write(script_content)
@@ -179,6 +212,10 @@ echo "[INFO] Removed MITM redirect for target port {listening_port} -> proxy por
     print(f"  2. Check iptables rules: sudo iptables -t nat -L --line-numbers -n -v")
     print(f"  3. If MITM chain doesn't exist: sudo ./set_iptables_rules.sh")
     print(f"  4. Add iptables rules: sudo iptables -t nat -A MITM -p tcp \! -s 127.0.0.0/24 --dport {listening_port} -j REDIRECT --to-ports {proxy_port}")
+    if protocol in ('https', 'tls'):
+        print(f"  5. Set .pem file: cat cert.key cert.crt > cert.pem")
+    if protocol == 'ssh':
+        print(f"  5. Set server private key and client private key")
 
 if __name__ == "__main__":
     main()
